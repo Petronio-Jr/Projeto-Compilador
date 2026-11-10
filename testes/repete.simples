@@ -1,0 +1,11 @@
+programa tipos
+    inteiro a 
+    logico b
+inicio 
+    leia a
+    b <- 10
+    enquanto a faca 
+        escreva a 
+        a <- a - 1
+    fimenquanto
+fimprograma
