@@ -1,13 +1,7 @@
 #include <stdio.h>
 
-
 void yyerror(const char *);
-
-void erro_semantico(char *s){
-    fprintf(stderr, "Erro Léxico na linha %d.\n", nlinha);
-    fprintf(stderr, "  símbolo %s desconhecido\n\n", s);
-    exit(10);
-}
+extern int nlinha;
 
 enum {
     INT = 10,

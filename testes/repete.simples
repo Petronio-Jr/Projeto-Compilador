@@ -1,11 +1,17 @@
 programa tipos
     inteiro a 
+    inteiro c
     logico b
 inicio 
     leia a
-    b <- 10
-    enquanto a faca 
-        escreva a 
-        a <- a - 1
+    c <- 1
+    b <- V
+    enquanto b faca 
+        escreva c 
+        c <- c + 1
+        se c > a 
+            entao b <- F
+            senao b <- V
+        fimse
     fimenquanto
 fimprograma
