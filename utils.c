@@ -99,7 +99,7 @@ int buscasimbolo(char *nome){
 void carrega(int pos){
     if(tabsimb[pos].cat == 'F')
         yyerror("Função usada como variável");
-    if(tabsimb[pos].cat == 'P')
+    if(tabsimb[pos].cat == 'P' || tabsimb[pos].cat == 'L')
         fprintf(yyout, "\tCRVL\t%d\n", tabsimb[pos].end);
     else
         fprintf(yyout, "\tCRVG\t%d\n", tabsimb[pos].end);
@@ -108,7 +108,7 @@ void carrega(int pos){
 void armazena(int pos){
     if(tabsimb[pos].cat == 'F')
         yyerror("Função não pode receber atribuição ou leitura");
-    if(tabsimb[pos].cat == 'P')
+    if(tabsimb[pos].cat == 'P' || tabsimb[pos].cat == 'L')
         fprintf(yyout, "\tARZL\t%d\n", tabsimb[pos].end);
     else
         fprintf(yyout, "\tARZG\t%d\n", tabsimb[pos].end);

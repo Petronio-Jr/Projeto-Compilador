@@ -21,6 +21,21 @@ int dentro_funcao = 0;
 int tipo_retorno_funcao = 0;
 int end_retorno = 0;
 int rotulo_fim_funcao = 0;
+int contalocal = 0;
+
+void declara_variavel(void)
+{
+    strcpy(elemtab.nome, atomo);
+    elemtab.tipo = tipo;
+    if(dentro_funcao){
+        elemtab.cat = 'L';
+        elemtab.end = contalocal++;
+    } else {
+        elemtab.cat = 'V';
+        elemtab.end = contavar++;
+    }
+    inseresimbolo(elemtab);
+}
 
 #define DEBUG(x)
 
@@ -116,7 +131,7 @@ funcao
     : T_FN tipo T_FUNC
         {
             /* desvia do código das funções ao programa principal (1ª função) */
-           if(!tem_funcoes){
+            if(!tem_funcoes){
                 tem_funcoes = 1;
                 fprintf(yyout, "\tDSVS\tL%d\n", rotulo_main);
             }
@@ -127,9 +142,9 @@ funcao
             elemtab.end = 0;
             elemtab.rotulo = ++rotulo;
             elemtab.npar = 0;
-            inseresimbolo(elemtab);          /* escopo global */
+            inseresimbolo(elemtab);          
             pos_funcao = topotab;
-            base_escopo = topotab + 1;       /* parâmetros: escopo da função */
+            base_escopo = topotab + 1;      
             nparam = 0;
             tem_retorno = 0;
             dentro_funcao = 1;
@@ -140,13 +155,19 @@ funcao
                 tabsimb[pos_funcao + 1 + i].end = i - nparam - 2;
             tabsimb[pos_funcao].npar = nparam;
             end_retorno = -(nparam + 3);
+            contalocal = 0;
             fprintf(yyout, "L%d\tENSP\n", tabsimb[pos_funcao].rotulo);
+        }
+      variaveis
+        {
+            if(contalocal > 0)
+                fprintf(yyout, "\tAMEM\t%d\n", contalocal);
         }
       T_INICIO lista_comandos T_FIMFN
         {
             if(!tem_retorno)
                 yyerror("Função sem comando RETORNE");
-            topotab = pos_funcao;            /* descarta os parâmetros */
+            topotab = pos_funcao;           
             base_escopo = 0;
             dentro_funcao = 0;
         }
@@ -191,23 +212,9 @@ tipo
 
 lista_variaveis
     : lista_variaveis T_IDENTIF
-      { 
-        strcpy(elemtab.nome,atomo);
-        elemtab.tipo = tipo;
-        elemtab.cat = 'V';
-        elemtab.end = contavar;
-        inseresimbolo(elemtab);
-        contavar++; 
-      }
+      { declara_variavel(); }
     | T_IDENTIF
-      { 
-        strcpy(elemtab.nome,atomo);
-        elemtab.tipo = tipo;
-        elemtab.cat = 'V';
-        elemtab.end = contavar;
-        inseresimbolo(elemtab);
-        contavar++; 
-      }
+      { declara_variavel(); }
     ;
 
 lista_comandos
@@ -312,14 +319,16 @@ retorne
             if(!dentro_funcao)
                 yyerror("Comando RETORNE fora de função");
         }
-        expressao
+      expressao
         {
             int t = desempilha('t');
             tem_retorno = 1;
             if(t != tipo_retorno_funcao)
                 yyerror("Incompatibilidade de tipos no retorno da função");
-            fprintf(yyout,"\tARZL\t%d\n", end_retorno);
-            fprintf(yyout,"\tRTSP\t%d\n", tabsimb[pos_funcao].npar);
+            fprintf(yyout, "\tARZL\t%d\n", end_retorno);
+            if(contalocal > 0)
+                fprintf(yyout, "\tDMEM\t%d\n", contalocal);
+            fprintf(yyout, "\tRTSP\t%d\n", tabsimb[pos_funcao].npar);
         }
     ;
 
