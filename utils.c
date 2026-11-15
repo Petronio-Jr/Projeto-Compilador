@@ -51,20 +51,27 @@ void mostrapilha(){
 }
 
 #define TAMTAB 100
+#define MAXPAR 10
+
 typedef struct {
     char nome[30];
     int tipo;
     int end;
+    char cat;
+    int rotulo;
+    int npar;
+    int tpar[MAXPAR];
 } tiptab;
 
 tiptab elemtab, tabsimb[TAMTAB];
 int topotab = -1;
+int base_escopo = 0;
 
 void inseresimbolo(tiptab elem){
     int i;
-    for(i = topotab; i >= 0 && strcmp(elem.nome, tabsimb[i].nome) != 0 ; i--)
+    for(i = topotab; i >= base_escopo && strcmp(elem.nome, tabsimb[i].nome) != 0 ; i--)
         ;
-    if(i != -1){
+    if(i >= base_escopo){
         yyerror("Identificador duplicado");
     }
     tabsimb[++topotab] = elem;
@@ -78,6 +85,24 @@ int buscasimbolo(char *nome){
         yyerror("Identificador não encontrado");
     }
     return i;
+}
+
+void carrega(int pos){
+    if(tabsimb[pos].cat == 'F')
+        yyerror("Função usada como variável");
+    if(tabsimb[pos].cat == 'P')
+        fprintf(yyout, "\tCRVL\t%d\n", tabsimb[pos].end);
+    else
+        fprintf(yyout, "\tCRVG\t%d\n", tabsimb[pos].end);
+}
+
+void armazena(int pos){
+    if(tabsimb[pos].cat == 'F')
+        yyerror("Função não pode receber atribuição ou leitura");
+    if(tabsimb[pos].cat == 'P')
+        fprintf(yyout, "\tARZL\t%d\n", tabsimb[pos].end);
+    else
+        fprintf(yyout, "\tARZG\t%d\n", tabsimb[pos].end);
 }
 
 void mostratabela(){

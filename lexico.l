@@ -8,7 +8,7 @@ void yyerror(const char *);
 
 identificador [a-zA-Z]([a-zA-Z]|[0-9])*
 numero [0-9]+
-espaco [ \t]+
+espaco [ \t\r]+
 novalinha [\n]
 
 %%
@@ -24,6 +24,10 @@ fimse             { return T_FIMSE; }
 enquanto          { return T_ENQTO; }
 faca              { return T_FACA; }
 fimenquanto       { return T_FIMENQTO; }
+fn                { return T_FN; }
+fimfn             { return T_FIMFN; }
+
+retorne           { return T_RETORNE; }
 
 inteiro           { return T_INTEIRO; }
 logico            { return T_LOGICO; }

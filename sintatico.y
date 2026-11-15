@@ -10,6 +10,17 @@ extern int nlinha;
 int contavar = 0;
 int rotulo = 0;
 int tipo;
+
+int rotulo_main = 0;
+int nparam = 0;
+int pos_funcao = 0;
+int tem_retorno = 0;
+
+int dentro_funcao = 0;
+int tipo_retorno_funcao = 0;
+int end_retorno = 0;
+int rotulo_fim_funcao = 0;
+
 #define DEBUG(x)
 
 %}
@@ -45,6 +56,9 @@ int tipo;
 %token T_FECHA
 %token T_LOGICO
 %token T_INTEIRO
+%token T_RETORNE
+%token T_FN
+%token T_FIMFN
 
 %define parse.error custom
 
@@ -66,6 +80,7 @@ programa
                  fprintf(yyout, "\tAMEM\t%d\n", contavar);
             }
         }
+      rotinas
       T_INICIO lista_comandos T_FIM
         { 
             int conta = desempilha('c');
@@ -82,6 +97,86 @@ cabecalho
 variaveis
     : /* vazio */
     | declaracao_variaveis
+    ;
+
+rotinas
+    : /* vazio */
+    | lista_funcoes
+        { fprintf(yyout, "L%d\tNADA\n", rotulo_main); }
+    ;
+
+lista_funcoes
+    : lista_funcoes funcao
+    | funcao
+    ;
+
+funcao
+    : T_FN tipo T_IDENTIF
+        {
+            /* desvia do código das funções ao programa principal (1ª função) */
+            if(rotulo_main == 0){
+                rotulo_main = ++rotulo;
+                fprintf(yyout, "\tDSVS\tL%d\n", rotulo_main);
+            }
+            tipo_retorno_funcao = tipo;
+            strcpy(elemtab.nome, atomo);
+            elemtab.tipo = tipo;
+            elemtab.cat = 'F';
+            elemtab.end = 0;
+            elemtab.rotulo = ++rotulo;
+            elemtab.npar = 0;
+            inseresimbolo(elemtab);          /* escopo global */
+            pos_funcao = topotab;
+            base_escopo = topotab + 1;       /* parâmetros: escopo da função */
+            nparam = 0;
+            tem_retorno = 0;
+            dentro_funcao = 1;
+        }
+      T_ABRE lista_parametros T_FECHA
+        {
+            /* Pilha da MVS na chamada: [resultado][p1..pn][end.ret][D antigo] */
+            for(int i = 0; i < nparam; i++)
+                tabsimb[pos_funcao + 1 + i].end = i - nparam - 2;
+            tabsimb[pos_funcao].npar = nparam;
+            end_retorno = -(nparam + 3);
+            rotulo_fim_funcao = ++rotulo;
+            fprintf(yyout, "L%d\tENSP\n", tabsimb[pos_funcao].rotulo);
+        }
+      T_INICIO lista_comandos T_FIMFN
+        {
+            if(!tem_retorno)
+                yyerror("Função sem comando RETORNE");
+            fprintf(yyout, "L%d\tNADA\n", rotulo_fim_funcao);
+            fprintf(yyout, "\tRTSP\t%d\n", tabsimb[pos_funcao].npar);
+            topotab = pos_funcao;            /* descarta os parâmetros */
+            base_escopo = 0;
+            dentro_funcao = 0;
+        }
+    ;
+
+lista_parametros
+    : /*vazio*/
+    | parametros
+    ;
+
+parametros
+    : parametros parametro
+    | parametro
+    ;
+
+parametro
+    : tipo T_IDENTIF
+        {
+            if(nparam >= MAXPAR)
+                yyerror("Número máximo de parâmetros excedido");
+            strcpy(elemtab.nome, atomo);
+            elemtab.tipo = tipo;
+            elemtab.cat = 'P';
+            elemtab.end = nparam;            /* provisório; ajustado ao fechar ')' */
+            inseresimbolo(elemtab);
+            tabsimb[pos_funcao].tpar[nparam] = tipo;
+            nparam++;
+        }
     ;
 
 declaracao_variaveis
@@ -101,6 +196,7 @@ lista_variaveis
       { 
         strcpy(elemtab.nome,atomo);
         elemtab.tipo = tipo;
+        elemtab.cat = 'V';
         elemtab.end = contavar;
         inseresimbolo(elemtab);
         contavar++; 
@@ -109,6 +205,7 @@ lista_variaveis
       { 
         strcpy(elemtab.nome,atomo);
         elemtab.tipo = tipo;
+        elemtab.cat = 'V';
         elemtab.end = contavar;
         inseresimbolo(elemtab);
         contavar++; 
@@ -126,6 +223,7 @@ comando
     | repeticao
     | selecao
     | atribuicao
+    | retorne
     ;
 
 leitura
@@ -133,7 +231,7 @@ leitura
         { 
             int pos = buscasimbolo(atomo);
             fprintf(yyout, "\tLEIA\n"); 
-            fprintf(yyout, "\tARZG\t%d\n", tabsimb[pos].end); 
+            armazena(pos);
         }
     ;
 
@@ -206,8 +304,25 @@ atribuicao
             int pos = desempilha('p');
             if(t != tabsimb[pos].tipo)
                 yyerror("Incompatibilidade de tipos na atribuição");
-            fprintf(yyout,"\tARZG\t%d\n", tabsimb[pos].end);
+            armazena(pos);
         }  
+    ;
+
+retorne
+    : T_RETORNE
+        {
+            if(!dentro_funcao)
+                yyerror("Comando RETORNE fora de função");
+        }
+        expressao
+        {
+            int t = desempilha('t');
+            tem_retorno = 1;
+            if(t != tipo_retorno_funcao)
+                yyerror("Incompatibilidade de tipos no retorno da função");
+            fprintf(yyout,"\tARZL\t%d\n", end_retorno);
+            fprintf(yyout,"\tDSVS\tL%d\n", rotulo_fim_funcao);
+        }
     ;
 
 expressao
@@ -236,7 +351,7 @@ termo
     : T_IDENTIF
         { 
             int pos = buscasimbolo(atomo);
-            fprintf(yyout,"\tCRVG\t%d\n", tabsimb[pos].end);
+            carrega(pos);
             empilha(tabsimb[pos].tipo, 't');
         } 
     | T_NUMERO
@@ -307,7 +422,10 @@ static const char *nome_token(yysymbol_kind_t token)
         [YYSYMBOL_T_ABRE]      = "'('",
         [YYSYMBOL_T_FECHA]     = "')'",
         [YYSYMBOL_T_LOGICO]    = "lógico",
-        [YYSYMBOL_T_INTEIRO]   = "inteiro"
+        [YYSYMBOL_T_INTEIRO]   = "inteiro",
+        [YYSYMBOL_T_RETORNE]   = "retorne",
+        [YYSYMBOL_T_FN]        = "fn",
+        [YYSYMBOL_T_FIMFN]     = "fimfn"
     };
 
     if (token >= 0 &&

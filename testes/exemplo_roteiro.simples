@@ -1,0 +1,12 @@
+programa p
+    inteiro x
+fn inteiro maior (inteiro A inteiro B)
+inicio
+    se A > B
+        entao retorne A
+        senao retorne B
+    fimse
+fimfn
+inicio
+    escreva 1
+fimprograma
