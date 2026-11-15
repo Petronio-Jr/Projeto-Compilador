@@ -12,6 +12,7 @@ int rotulo = 0;
 int tipo;
 
 int rotulo_main = 0;
+int tem_funcoes = 0; 
 int nparam = 0;
 int pos_funcao = 0;
 int tem_retorno = 0;
@@ -59,6 +60,7 @@ int rotulo_fim_funcao = 0;
 %token T_RETORNE
 %token T_FN
 %token T_FIMFN
+%token T_FUNC
 
 %define parse.error custom
 
@@ -111,11 +113,11 @@ lista_funcoes
     ;
 
 funcao
-    : T_FN tipo T_IDENTIF
+    : T_FN tipo T_FUNC
         {
             /* desvia do código das funções ao programa principal (1ª função) */
-            if(rotulo_main == 0){
-                rotulo_main = ++rotulo;
+           if(!tem_funcoes){
+                tem_funcoes = 1;
                 fprintf(yyout, "\tDSVS\tL%d\n", rotulo_main);
             }
             tipo_retorno_funcao = tipo;
@@ -134,20 +136,16 @@ funcao
         }
       T_ABRE lista_parametros T_FECHA
         {
-            /* Pilha da MVS na chamada: [resultado][p1..pn][end.ret][D antigo] */
             for(int i = 0; i < nparam; i++)
                 tabsimb[pos_funcao + 1 + i].end = i - nparam - 2;
             tabsimb[pos_funcao].npar = nparam;
             end_retorno = -(nparam + 3);
-            rotulo_fim_funcao = ++rotulo;
             fprintf(yyout, "L%d\tENSP\n", tabsimb[pos_funcao].rotulo);
         }
       T_INICIO lista_comandos T_FIMFN
         {
             if(!tem_retorno)
                 yyerror("Função sem comando RETORNE");
-            fprintf(yyout, "L%d\tNADA\n", rotulo_fim_funcao);
-            fprintf(yyout, "\tRTSP\t%d\n", tabsimb[pos_funcao].npar);
             topotab = pos_funcao;            /* descarta os parâmetros */
             base_escopo = 0;
             dentro_funcao = 0;
@@ -172,7 +170,7 @@ parametro
             strcpy(elemtab.nome, atomo);
             elemtab.tipo = tipo;
             elemtab.cat = 'P';
-            elemtab.end = nparam;            /* provisório; ajustado ao fechar ')' */
+            elemtab.end = nparam;           
             inseresimbolo(elemtab);
             tabsimb[pos_funcao].tpar[nparam] = tipo;
             nparam++;
@@ -321,7 +319,7 @@ retorne
             if(t != tipo_retorno_funcao)
                 yyerror("Incompatibilidade de tipos no retorno da função");
             fprintf(yyout,"\tARZL\t%d\n", end_retorno);
-            fprintf(yyout,"\tDSVS\tL%d\n", rotulo_fim_funcao);
+            fprintf(yyout,"\tRTSP\t%d\n", tabsimb[pos_funcao].npar);
         }
     ;
 
@@ -377,9 +375,52 @@ termo
             empilha(LOG, 't');
             fprintf(yyout,"\tNEGA\n"); 
         } 
+    | T_FUNC
+        {
+            int pos = buscasimbolo(atomo);
+            if(tabsimb[pos].cat != 'F')
+                yyerror("Identificador não é uma função");
+            empilha(pos, 'f');               /* função sendo chamada */
+            empilha(0, 'n');                 /* argumentos já processados */
+            fprintf(yyout, "\tAMEM\t1\n");     /* espaço para o resultado */
+        }
+      T_ABRE lista_argumentos T_FECHA
+        {
+            int n = desempilha('n');
+            int pos = desempilha('f');
+            if(n != tabsimb[pos].npar)
+                yyerror("Número de argumentos diferente do número de parâmetros");
+            fprintf(yyout, "\tSVCP\n");
+            fprintf(yyout, "\tDSVS\tL%d\n", tabsimb[pos].rotulo);
+            empilha(tabsimb[pos].tipo, 't'); /* o resultado fica no topo da MVS */
+        }
     | T_ABRE expressao T_FECHA
     ; 
 
+lista_argumentos
+    : /* vazio */
+    | argumentos
+    ;
+
+argumentos
+    : argumentos argumento
+    | argumento
+    ;
+
+argumento
+    : expressao
+        {
+            /* passagem por valor: o valor da expressão já está na pilha da MVS */
+            int t = desempilha('t');
+            int n = desempilha('n');
+            int pos = consulta('f');
+            if(n >= tabsimb[pos].npar)
+                yyerror("Número de argumentos maior que o de parâmetros");
+            if(t != tabsimb[pos].tpar[n])
+                yyerror("Incompatibilidade de tipo no argumento da chamada");
+            empilha(n + 1, 'n');
+        }
+    ;
 %%
 
 void yyerror(const char *mensagem)
@@ -425,7 +466,8 @@ static const char *nome_token(yysymbol_kind_t token)
         [YYSYMBOL_T_INTEIRO]   = "inteiro",
         [YYSYMBOL_T_RETORNE]   = "retorne",
         [YYSYMBOL_T_FN]        = "fn",
-        [YYSYMBOL_T_FIMFN]     = "fimfn"
+        [YYSYMBOL_T_FIMFN]     = "fimfn",
+        [YYSYMBOL_T_FUNC]      = "nome de função"
     };
 
     if (token >= 0 &&

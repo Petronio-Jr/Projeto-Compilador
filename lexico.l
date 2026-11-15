@@ -26,7 +26,6 @@ faca              { return T_FACA; }
 fimenquanto       { return T_FIMENQTO; }
 fn                { return T_FN; }
 fimfn             { return T_FIMFN; }
-
 retorne           { return T_RETORNE; }
 
 inteiro           { return T_INTEIRO; }
@@ -50,7 +49,13 @@ NAO               { return T_NAO; }
 ")"               { return T_FECHA; }
 
 {identificador}   { 
+                    int c;
                     strcpy(atomo, yytext);
+                    c = input();
+                    if (c > 0)
+                      unput(c);
+                    if (c == '(')
+                      return T_FUNC;
                     return T_IDENTIF;
 }
 {numero}          { 

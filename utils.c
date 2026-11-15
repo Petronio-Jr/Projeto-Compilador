@@ -32,6 +32,15 @@ int desempilha(char tipo) {
     return Pilha[topo--].valor;
 }
 
+int consulta(char tp){
+    if (topo == -1)
+        yyerror("Pilha Vazia");
+    if(Pilha[topo].tipo != tp)
+        yyerror("Tipo diferente na consulta da pilha");
+    return Pilha[topo].valor;    
+}
+
+
 void testatipo(int tipo1, int tipo2, int ret){
     int t2 = desempilha('t'); 
     int t1 = desempilha('t');
