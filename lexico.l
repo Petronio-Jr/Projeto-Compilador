@@ -1,3 +1,13 @@
+/*+------------------------------------------------------------------------------------------
+    |            UNIFAL - Universidade Federal de Alfenas.
+    |              BACHARELADO EM CIENCIA DA COMPUTACAO.
+    | Trabalho  : Funcao com retorno
+    | Disciplina: Teoria de Linguagens e Compiladores
+    | Professor : Luiz Eduardo da Silva
+    | Aluno     : Petrônio Dias de Carvalho Júnior
+    | Data      : 15/11/2026
++-------------------------------------------------------------------------------------------*/
+
 %{
 #include "sintatico.h"
 void erro_lexico(char *);
