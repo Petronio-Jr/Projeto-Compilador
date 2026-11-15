@@ -1,15 +1,13 @@
 programa tipos
     inteiro a 
-    inteiro c
     logico b
 inicio 
     leia a
-    c <- 1
     b <- V
     enquanto b faca 
-        escreva c 
-        c <- c + 1
-        se c > a 
+        escreva a 
+        a <- a - 1
+        se a < 0 
             entao b <- F
             senao b <- V
         fimse
